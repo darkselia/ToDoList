@@ -1,0 +1,54 @@
+# Dependencies
+**/node_modules/
+
+# Nuxt / frontend build artifacts
+**/.nuxt/
+**/.output/
+**/.nitro/
+**/.cache/
+**/.vite/
+
+# Backend / TypeScript build artifacts
+**/dist/
+**/build/
+**/*.tsbuildinfo
+
+# Test and coverage outputs
+**/coverage/
+**/.nyc_output/
+
+# Environment files (keep templates)
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.template
+
+# Logs
+**/*.log
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
+
+# SQLite databases
+**/*.db
+**/*.db-*
+**/*.sqlite
+**/*.sqlite3
+**/*.sqlite-shm
+**/*.sqlite-wal
+
+# Temporary files and folders
+**/tmp/
+**/temp/
+**/*.tmp
+**/*.swp
+
+# IDE/editor files
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+

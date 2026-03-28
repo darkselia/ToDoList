@@ -1,0 +1,66 @@
+@baseUrl = http://localhost:4000
+@userId = 1
+@taskId = 1
+
+### Health check
+GET {{baseUrl}}/api/health
+
+### Tasks: без заголовка x-user-id (ожидается 400)
+GET {{baseUrl}}/api/tasks
+
+### Tasks: получить список задач пользователя
+GET {{baseUrl}}/api/tasks?status=all&sortBy=createdAt&order=desc
+x-user-id: {{userId}}
+
+### Tasks: фильтрация (active/completed/overdue)
+GET {{baseUrl}}/api/tasks?status=overdue&sortBy=dueDate&order=asc
+x-user-id: {{userId}}
+
+### Tasks: создать задачу
+POST {{baseUrl}}/api/tasks
+x-user-id: {{userId}}
+Content-Type: application/json
+
+{
+  "title": "333Подготовить ToDo backend",
+  "description": "Проверить CRUD и фильтры",
+  "dueDate": "2026-04-15",
+  "isCompleted": false
+}
+
+### Tasks: создать задачу с ошибкой (пустой title, ожидается 400)
+POST {{baseUrl}}/api/tasks
+x-user-id: {{userId}}
+Content-Type: application/json
+
+{
+  "title": "",
+  "description": "invalid request",
+  "dueDate": "2026-04-15"
+}
+
+### Tasks: обновить задачу (подставь актуальный id в @taskId)
+PUT {{baseUrl}}/api/tasks/{{taskId}}
+x-user-id: {{userId}}
+Content-Type: application/json
+
+{
+  "title": "222Подготовить ToDo backend (updated)",
+  "description": "Обновленное описание",
+  "isCompleted": true
+}
+
+### Tasks: обновить задачу без полей (ожидается 400)
+PUT {{baseUrl}}/api/tasks/{{taskId}}
+x-user-id: {{userId}}
+Content-Type: application/json
+
+{}
+
+### Tasks: удалить задачу
+DELETE {{baseUrl}}/api/tasks/{{taskId}}
+x-user-id: {{userId}}
+
+### Tasks: удалить несуществующую задачу (ожидается 404)
+DELETE {{baseUrl}}/api/tasks/999999
+x-user-id: {{userId}}

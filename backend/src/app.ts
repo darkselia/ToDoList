@@ -8,7 +8,19 @@ function createApp() {
     app.use(express.json());
 
     app.get('/api/health', (_req, res) => {
-        res.json({ ok: true, service: 'backend' });
+        res.status(200).json({
+            success: true,
+            data: { ok: true, service: 'backend' },
+            error: null,
+        });
+    });
+
+    app.get('/', (_req, res) => {
+        res.status(200).json({
+            success: true,
+            data: { hello: 'world!', service: 'backend' },
+            error: null,
+        });
     });
 
     return app;

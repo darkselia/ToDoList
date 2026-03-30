@@ -1,6 +1,29 @@
 @baseUrl = http://localhost:4000
 @userId = 1
 @taskId = 1
+@authToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImVtYWlsIjoiZGVtb0BleGFtcGxlLmNvbSIsImlhdCI6MTc3NDg3MTQ3NiwiZXhwIjoxNzc0OTU3ODc2fQ.eeSQ3sf4rXe_2HWZh4Qcl5t1nInEPvAiQmEw91PHEK0
+
+### Auth: login (создает пользователя при отсутствии)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "demo@example.com",
+  "password": "secret123"
+}
+
+### Auth: login с неверным паролем (ожидается 401)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "demo@example.com",
+  "password": "wrongpass"
+}
+
+### Auth: logout (клиент удаляет токен из localStorage)
+POST {{baseUrl}}/api/auth/logout
+x-access-token: {{authToken}}
 
 ### Health check
 GET {{baseUrl}}/api/health

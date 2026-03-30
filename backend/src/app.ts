@@ -26,6 +26,32 @@ function createApp() {
         });
     });
 
+    app.use((req, res) => {
+        res.status(404).json({
+            success: false,
+            error: {
+                code: 404,
+                message: `Route not found: ${req.method} ${req.originalUrl}`,
+            },
+        });
+    });
+
+    app.use((error: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+        if (res.headersSent) {
+            next(error);
+            return;
+        }
+
+        console.error('Unhandled server error:', error);
+        res.status(500).json({
+            success: false,
+            error: {
+                code: 500,
+                message: 'Internal server error.',
+            },
+        });
+    });
+
     return app;
 }
 

@@ -4,10 +4,6 @@ const taskSortFieldSchema = z.enum(['createdAt', 'dueDate', 'status']);
 const sortOrderSchema = z.enum(['asc', 'desc']);
 const taskStatusFilterSchema = z.enum(['all', 'active', 'completed', 'overdue']);
 
-const userIdHeaderSchema = z.object({
-    'x-user-id': z.coerce.number().int().positive(),
-});
-
 const createTaskBodySchema = z.object({
     title: z.string().trim().min(1),
     description: z.string().trim().default(''),
@@ -57,7 +53,6 @@ export {
     taskSortFieldSchema,
     sortOrderSchema,
     taskStatusFilterSchema,
-    userIdHeaderSchema,
     createTaskBodySchema,
     updateTaskBodySchema,
     taskIdParamsSchema,

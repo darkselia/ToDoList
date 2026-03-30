@@ -1,5 +1,6 @@
 import { Router, type Response } from 'express';
 import type { ZodType } from 'zod';
+import type { AuthenticatedRequest } from '../middleware/auth.js';
 import {
     createTask,
     deleteTask,
@@ -13,16 +14,11 @@ import {
     taskIdParamsSchema,
     taskQuerySchema,
     updateTaskBodySchema,
-    userIdHeaderSchema,
 } from './schemas.js';
 
 const tasksRouter = Router();
 
 function getValidationMessage(message: string, fieldPath?: string) {
-    if (fieldPath === 'x-user-id' || message.includes('x-user-id')) {
-        return 'x-user-id header is required and must be a positive integer.';
-    }
-
     if (fieldPath === 'dueDate' || message.includes('dueDate')) {
         return 'dueDate is required.';
     }
@@ -62,19 +58,26 @@ function parseOrBadRequest<T>(
     return parsedResult.data;
 }
 
-function parseHeaderUserId(res: Response, headers: unknown) {
-    return parseOrBadRequest(
-        res,
-        userIdHeaderSchema,
-        headers,
-        'x-user-id header is required and must be a positive integer.',
-    );
+function getCurrentUserId(req: AuthenticatedRequest, res: Response) {
+    const userId = req.user?.userId;
+    if (!userId) {
+        res.status(401).json({
+            success: false,
+            error: {
+                code: 401,
+                message: 'Unauthorized user context.',
+            },
+        });
+        return null;
+    }
+
+    return userId;
 }
 
 tasksRouter.get('/', async (req, res) => {
     try {
-        const headerData = parseHeaderUserId(res, req.headers);
-        if (!headerData) {
+        const userId = getCurrentUserId(req as AuthenticatedRequest, res);
+        if (!userId) {
             return;
         }
 
@@ -87,7 +90,7 @@ tasksRouter.get('/', async (req, res) => {
             res,
             taskFiltersSchema,
             {
-                userId: headerData['x-user-id'],
+                userId,
                 ...queryData,
             },
             'Invalid query params.',
@@ -117,8 +120,8 @@ tasksRouter.get('/', async (req, res) => {
 
 tasksRouter.post('/', async (req, res) => {
     try {
-        const headerData = parseHeaderUserId(res, req.headers);
-        if (!headerData) {
+        const userId = getCurrentUserId(req as AuthenticatedRequest, res);
+        if (!userId) {
             return;
         }
 
@@ -134,7 +137,7 @@ tasksRouter.post('/', async (req, res) => {
             description,
             dueDate,
             isCompleted,
-            createdBy: headerData['x-user-id'],
+            createdBy: userId,
         });
 
         res.status(201).json({
@@ -156,8 +159,8 @@ tasksRouter.post('/', async (req, res) => {
 
 tasksRouter.put('/:id', async (req, res) => {
     try {
-        const headerData = parseHeaderUserId(res, req.headers);
-        if (!headerData) {
+        const userId = getCurrentUserId(req as AuthenticatedRequest, res);
+        if (!userId) {
             return;
         }
 
@@ -173,7 +176,7 @@ tasksRouter.put('/:id', async (req, res) => {
         }
 
         const existingTask = await getTaskById(taskId);
-        if (!existingTask || existingTask.createdBy !== headerData['x-user-id']) {
+        if (!existingTask || existingTask.createdBy !== userId) {
             res.status(404).json({
                 success: false,
                 error: {
@@ -215,8 +218,8 @@ tasksRouter.put('/:id', async (req, res) => {
 
 tasksRouter.delete('/:id', async (req, res) => {
     try {
-        const headerData = parseHeaderUserId(res, req.headers);
-        if (!headerData) {
+        const userId = getCurrentUserId(req as AuthenticatedRequest, res);
+        if (!userId) {
             return;
         }
 
@@ -227,7 +230,7 @@ tasksRouter.delete('/:id', async (req, res) => {
         const taskId = paramsData.id;
 
         const existingTask = await getTaskById(taskId);
-        if (!existingTask || existingTask.createdBy !== headerData['x-user-id']) {
+        if (!existingTask || existingTask.createdBy !== userId) {
             res.status(404).json({
                 success: false,
                 error: {

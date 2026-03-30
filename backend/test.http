@@ -1,9 +1,9 @@
 @baseUrl = http://localhost:4000
-@userId = 1
-@taskId = 1
-@authToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImVtYWlsIjoiZGVtb0BleGFtcGxlLmNvbSIsImlhdCI6MTc3NDg3MTQ3NiwiZXhwIjoxNzc0OTU3ODc2fQ.eeSQ3sf4rXe_2HWZh4Qcl5t1nInEPvAiQmEw91PHEK0
 
-### Auth: login (создает пользователя при отсутствии)
+### 01. Health check
+GET {{baseUrl}}/api/health
+
+### 02. Login user #1 (создает пользователя при отсутствии) + сохранить token
 POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
 
@@ -12,7 +12,24 @@ Content-Type: application/json
   "password": "secret123"
 }
 
-### Auth: login с неверным паролем (ожидается 401)
+> {%
+  client.global.set("authToken", response.body.data.token);
+%}
+
+### 03. Login user #2 (создает пользователя при отсутствии) + сохранить token
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "demo2@example.com",
+  "password": "secret123"
+}
+
+> {%
+  client.global.set("secondUserToken", response.body.data.token);
+%}
+
+### 04. Login с неверным паролем (ожидается 401)
 POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
 
@@ -21,39 +38,12 @@ Content-Type: application/json
   "password": "wrongpass"
 }
 
-### Auth: logout (клиент удаляет токен из localStorage)
-POST {{baseUrl}}/api/auth/logout
-x-access-token: {{authToken}}
-
-### Health check
-GET {{baseUrl}}/api/health
-
-### Tasks: без заголовка x-user-id (ожидается 400)
+### 05. Tasks без токена (ожидается 401)
 GET {{baseUrl}}/api/tasks
 
-### Tasks: получить список задач пользователя
-GET {{baseUrl}}/api/tasks?status=all&sortBy=createdAt&order=desc
-x-user-id: {{userId}}
-
-### Tasks: фильтрация (active/completed/overdue)
-GET {{baseUrl}}/api/tasks?status=overdue&sortBy=dueDate&order=asc
-x-user-id: {{userId}}
-
-### Tasks: создать задачу
+### 06. User #1: создать задачу с ошибкой (пустой title, ожидается 400)
 POST {{baseUrl}}/api/tasks
-x-user-id: {{userId}}
-Content-Type: application/json
-
-{
-  "title": "333Подготовить ToDo backend",
-  "description": "Проверить CRUD и фильтры",
-  "dueDate": "2026-04-15",
-  "isCompleted": false
-}
-
-### Tasks: создать задачу с ошибкой (пустой title, ожидается 400)
-POST {{baseUrl}}/api/tasks
-x-user-id: {{userId}}
+x-access-token: {{authToken}}
 Content-Type: application/json
 
 {
@@ -62,28 +52,106 @@ Content-Type: application/json
   "dueDate": "2026-04-15"
 }
 
-### Tasks: обновить задачу (подставь актуальный id в @taskId)
-PUT {{baseUrl}}/api/tasks/{{taskId}}
-x-user-id: {{userId}}
+### 07. User #1: создать свою задачу + сохранить taskId
+POST {{baseUrl}}/api/tasks
+x-access-token: {{authToken}}
 Content-Type: application/json
 
 {
-  "title": "222Подготовить ToDo backend (updated)",
-  "description": "Обновленное описание",
+  "title": "U1_PRIVATE_TASK_001",
+  "description": "Эту задачу должен видеть только пользователь 1",
+  "dueDate": "2026-06-01",
+  "isCompleted": false
+}
+
+> {%
+  client.global.set("user1TaskId", String(response.body.data.id));
+%}
+
+### 08. User #2: создать свою задачу + сохранить taskId
+POST {{baseUrl}}/api/tasks
+x-access-token: {{secondUserToken}}
+Content-Type: application/json
+
+{
+  "title": "U2_PRIVATE_TASK_001",
+  "description": "Эту задачу должен видеть только пользователь 2",
+  "dueDate": "2026-06-02",
+  "isCompleted": false
+}
+
+> {%
+  client.global.set("user2TaskId", String(response.body.data.id));
+%}
+
+### 09. User #1: получить список задач (ожидается без задач user #2)
+GET {{baseUrl}}/api/tasks?status=all&sortBy=createdAt&order=desc
+x-access-token: {{authToken}}
+
+### 10. User #2: получить список задач (ожидается без задач user #1)
+GET {{baseUrl}}/api/tasks?status=all&sortBy=createdAt&order=desc
+x-access-token: {{secondUserToken}}
+
+### 11. User #1: видит свою задачу по поиску (ожидается >= 1)
+GET {{baseUrl}}/api/tasks?search=U1_PRIVATE_TASK_001
+x-access-token: {{authToken}}
+
+### 12. User #1: не видит задачу user #2 (ожидается пустой список)
+GET {{baseUrl}}/api/tasks?search=U2_PRIVATE_TASK_001
+x-access-token: {{authToken}}
+
+### 13. User #2: видит свою задачу по поиску (ожидается >= 1)
+GET {{baseUrl}}/api/tasks?search=U2_PRIVATE_TASK_001
+x-access-token: {{secondUserToken}}
+
+### 14. User #2: не видит задачу user #1 (ожидается пустой список)
+GET {{baseUrl}}/api/tasks?search=U1_PRIVATE_TASK_001
+x-access-token: {{secondUserToken}}
+
+### 15. User #2: пытается обновить задачу user #1 (ожидается 404)
+PUT {{baseUrl}}/api/tasks/{{user1TaskId}}
+x-access-token: {{secondUserToken}}
+Content-Type: application/json
+
+{
+  "title": "HACK_TRY_BY_USER2"
+}
+
+### 16. User #2: пытается удалить задачу user #1 (ожидается 404)
+DELETE {{baseUrl}}/api/tasks/{{user1TaskId}}
+x-access-token: {{secondUserToken}}
+
+### 17. User #1: обновить свою задачу (ожидается 200)
+PUT {{baseUrl}}/api/tasks/{{user1TaskId}}
+x-access-token: {{authToken}}
+Content-Type: application/json
+
+{
+  "title": "U1_PRIVATE_TASK_001_UPDATED",
+  "description": "Обновил владелец",
   "isCompleted": true
 }
 
-### Tasks: обновить задачу без полей (ожидается 400)
-PUT {{baseUrl}}/api/tasks/{{taskId}}
-x-user-id: {{userId}}
+### 18. User #1: обновить свою задачу без полей (ожидается 400)
+PUT {{baseUrl}}/api/tasks/{{user1TaskId}}
+x-access-token: {{authToken}}
 Content-Type: application/json
 
 {}
 
-### Tasks: удалить задачу
-DELETE {{baseUrl}}/api/tasks/{{taskId}}
-x-user-id: {{userId}}
+### 19. User #1: удалить свою задачу (ожидается 200)
+DELETE {{baseUrl}}/api/tasks/{{user1TaskId}}
+x-access-token: {{authToken}}
 
-### Tasks: удалить несуществующую задачу (ожидается 404)
+### 20. User #1: удалить несуществующую задачу (ожидается 404)
 DELETE {{baseUrl}}/api/tasks/999999
-x-user-id: {{userId}}
+x-access-token: {{authToken}}
+
+### 21. Logout user #1
+POST {{baseUrl}}/api/auth/logout
+x-access-token: {{authToken}}
+
+### 22. Logout user #2
+POST {{baseUrl}}/api/auth/logout
+x-access-token: {{secondUserToken}}
+

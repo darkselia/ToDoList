@@ -18,22 +18,6 @@ import {
 
 const tasksRouter = Router();
 
-function getValidationMessage(message: string, fieldPath?: string) {
-    if (fieldPath === 'dueDate' || message.includes('dueDate')) {
-        return 'dueDate is required.';
-    }
-
-    if (fieldPath === 'title' || message.includes('title')) {
-        return 'title is required.';
-    }
-
-    if (fieldPath) {
-        return `Invalid parameter "${fieldPath}": ${message}`;
-    }
-
-    return message;
-}
-
 function parseOrBadRequest<T>(
     res: Response,
     schema: ZodType<T>,
@@ -43,8 +27,7 @@ function parseOrBadRequest<T>(
     const parsedResult = schema.safeParse(payload);
     if (!parsedResult.success) {
         const issue = parsedResult.error.issues[0];
-        const fieldPath = issue?.path?.map((part) => String(part)).join('.');
-        const message = getValidationMessage(issue?.message || fallbackMessage, fieldPath);
+        const message = issue?.message || fallbackMessage;
         res.status(400).json({
             success: false,
             error: {

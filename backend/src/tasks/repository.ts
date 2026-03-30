@@ -38,7 +38,7 @@ async function createTask(input: CreateTaskInput): Promise<Task> {
         [
             input.title.trim(),
             input.description.trim(),
-            input.dueDate,
+            input.dueDate.toISOString(),
             input.isCompleted ? 1 : 0,
             input.createdBy,
         ],
@@ -91,12 +91,12 @@ async function getAllTasks(filters: TaskFilters): Promise<Task[]> {
 
     if (filters.dueDateFrom) {
         whereClauses.push('date(due_date) >= date(?)');
-        params.push(filters.dueDateFrom);
+        params.push(filters.dueDateFrom.toISOString());
     }
 
     if (filters.dueDateTo) {
         whereClauses.push('date(due_date) <= date(?)');
-        params.push(filters.dueDateTo);
+        params.push(filters.dueDateTo.toISOString());
     }
 
     if (filters.search && filters.search.trim().length > 0) {
@@ -137,7 +137,7 @@ async function updateTask(id: number, input: UpdateTaskInput): Promise<Task | nu
 
     if (input.dueDate !== undefined) {
         updates.push('due_date = ?');
-        params.push(input.dueDate);
+        params.push(input.dueDate.toISOString());
     }
 
     if (input.isCompleted !== undefined) {

@@ -1,23 +1,31 @@
-import { z } from 'zod';
+import {z} from 'zod';
 
 const taskSortFieldSchema = z.enum(['createdAt', 'dueDate', 'status']);
 const sortOrderSchema = z.enum(['asc', 'desc']);
 const taskStatusFilterSchema = z.enum(['all', 'active', 'completed', 'overdue']);
 
-const createTaskBodySchema = z.object({
+const dateBaseSchema = z.coerce.date().refine((value) => !Number.isNaN(value.getTime()), {
+    message: 'Invalid date.',
+});
+
+const dateYmdSchema = dateBaseSchema
+    .min(new Date(Date.now()), { message: 'Date must be in the future.' })
+;
+
+const taskBodyBaseSchema = z.object({
     title: z.string().trim().min(1),
-    description: z.string().trim().default(''),
-    dueDate: z.string().min(1),
+    description: z.string().trim(),
+    dueDate: dateYmdSchema,
     isCompleted: z.boolean().optional(),
 });
 
-const updateTaskBodySchema = z
-    .object({
-        title: z.string().trim().min(1).optional(),
-        description: z.string().trim().optional(),
-        dueDate: z.string().min(1).optional(),
-        isCompleted: z.boolean().optional(),
-    })
+const createTaskBodySchema = taskBodyBaseSchema.extend({
+    description: taskBodyBaseSchema.shape.description.default(''),
+
+});
+
+const updateTaskBodySchema = taskBodyBaseSchema
+    .partial()
     .refine((value) => Object.keys(value).length > 0, {
         message: 'No fields provided for update.',
     });
@@ -30,21 +38,29 @@ const singleQueryValueSchema = z
     .union([z.string(), z.array(z.string())])
     .transform((value) => (Array.isArray(value) ? value[0] : value));
 
-const taskQuerySchema = z.object({
+const singleQueryDateSchema = z.preprocess(
+    (value) => (Array.isArray(value) ? value[0] : value),
+    dateBaseSchema,
+);
+
+const taskDateRangeBaseSchema = z.object({
+    dueDateFrom: dateBaseSchema.optional(),
+    dueDateTo: dateBaseSchema.optional(),
+});
+
+const taskQuerySchema = taskDateRangeBaseSchema.extend({
     status: singleQueryValueSchema.pipe(taskStatusFilterSchema).optional(),
     search: singleQueryValueSchema.optional(),
-    dueDateFrom: singleQueryValueSchema.optional(),
-    dueDateTo: singleQueryValueSchema.optional(),
+    dueDateFrom: singleQueryDateSchema.optional(),
+    dueDateTo: singleQueryDateSchema.optional(),
     sortBy: singleQueryValueSchema.pipe(taskSortFieldSchema).optional(),
     order: singleQueryValueSchema.pipe(sortOrderSchema).optional(),
 });
 
-const taskFiltersSchema = z.object({
+const taskFiltersSchema = taskDateRangeBaseSchema.extend({
     userId: z.number().int().positive(),
     status: taskStatusFilterSchema.optional(),
     search: z.string().optional(),
-    dueDateFrom: z.string().optional(),
-    dueDateTo: z.string().optional(),
     sortBy: taskSortFieldSchema.optional(),
     order: sortOrderSchema.optional(),
 });

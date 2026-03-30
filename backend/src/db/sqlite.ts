@@ -90,7 +90,7 @@ async function initializeDatabase() {
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,
                 email         TEXT    NOT NULL UNIQUE,
                 password_hash TEXT    NOT NULL,
-                created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+                created_at    TEXT    NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%S', 'now'))
             )
         `,
     );
@@ -106,7 +106,7 @@ async function initializeDatabase() {
                 due_date     TEXT    NOT NULL,
                 is_completed INTEGER NOT NULL DEFAULT 0,
                 created_by   INTEGER NOT NULL,
-                created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+                created_at   TEXT    NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%S', 'now'))
             )
         `,
     );

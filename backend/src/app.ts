@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import { tasksRouter } from './tasks/routes.js';
+import { authRouter } from './auth/routes.js';
+import { authenticateRequest } from './middleware/auth.js';
 
 function createApp() {
     const app = express();
@@ -8,7 +10,9 @@ function createApp() {
     app.use(cors());
     app.use(express.json());
 
-    app.use('/api/tasks', tasksRouter);
+
+    app.use('/api/auth', authRouter);
+    app.use('/api/tasks', authenticateRequest, tasksRouter);
 
     app.get('/api/health', (_req, res) => {
         res.status(200).json({
@@ -42,12 +46,16 @@ function createApp() {
             return;
         }
 
+        const isDev = process.env.NODE_ENV !== 'production';
+        const errorMessage = error instanceof Error ? error.message : 'Internal server error.';
+        const message = isDev ? errorMessage : 'Internal server error.';
+
         console.error('Unhandled server error:', error);
         res.status(500).json({
             success: false,
             error: {
                 code: 500,
-                message: 'Internal server error.',
+                message,
             },
         });
     });

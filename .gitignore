@@ -12,6 +12,9 @@
 **/dist/
 **/build/
 **/*.tsbuildinfo
+**/*.d.ts*
+**/*.js.map
+**/*.js
 
 # Test and coverage outputs
 **/coverage/

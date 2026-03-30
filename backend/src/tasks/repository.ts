@@ -2,12 +2,12 @@ import {all, get, getDatabase, run} from '../db/sqlite.js';
 import {mapTaskDbRowToTask} from './types.js';
 import type {
     CreateTaskInput,
-    Task,
+    TaskResponse,
     TaskDbRow,
-    TaskFilters,
+    TaskFiltersRequest,
     TaskSortField,
     SortOrder,
-    UpdateTaskInput,
+    UpdateTaskRequest,
 } from './types.js';
 
 function resolveSortColumn(sortBy: TaskSortField = 'createdAt') {
@@ -26,7 +26,7 @@ function resolveSortOrder(order: SortOrder = 'desc') {
     return order === 'asc' ? 'ASC' : 'DESC';
 }
 
-async function createTask(input: CreateTaskInput): Promise<Task> {
+async function createTask(input: CreateTaskInput): Promise<TaskResponse> {
     const db = getDatabase();
 
     const result = await run(
@@ -52,7 +52,7 @@ async function createTask(input: CreateTaskInput): Promise<Task> {
     return createdTask;
 }
 
-async function getTaskById(id: number): Promise<Task | null> {
+async function getTaskById(id: number): Promise<TaskResponse | null> {
     const db = getDatabase();
 
     const row = await get<TaskDbRow>(
@@ -68,7 +68,7 @@ async function getTaskById(id: number): Promise<Task | null> {
     return row ? mapTaskDbRowToTask(row) : null;
 }
 
-async function getAllTasks(filters: TaskFilters): Promise<Task[]> {
+async function getAllTasks(filters: TaskFiltersRequest): Promise<TaskResponse[]> {
     const db = getDatabase();
     const sortColumn = resolveSortColumn(filters.sortBy);
     const sortOrder = resolveSortOrder(filters.order);
@@ -119,7 +119,7 @@ async function getAllTasks(filters: TaskFilters): Promise<Task[]> {
     return rows.map(mapTaskDbRowToTask);
 }
 
-async function updateTask(id: number, input: UpdateTaskInput): Promise<Task | null> {
+async function updateTask(id: number, input: UpdateTaskRequest): Promise<TaskResponse | null> {
     const db = getDatabase();
 
     const updates: string[] = [];
@@ -168,7 +168,7 @@ async function updateTask(id: number, input: UpdateTaskInput): Promise<Task | nu
     return getTaskById(id);
 }
 
-async function toggleTaskComplete(id: number): Promise<Task | null> {
+async function toggleTaskComplete(id: number): Promise<TaskResponse | null> {
     const db = getDatabase();
 
     const result = await run(

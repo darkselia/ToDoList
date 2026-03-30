@@ -9,12 +9,18 @@ import {
     updateTask,
 } from './repository.js';
 import {
-    createTaskBodySchema,
+    createTaskRequestSchema,
     taskFiltersSchema,
     taskIdParamsSchema,
-    taskQuerySchema,
-    updateTaskBodySchema,
+    taskQueryRequestSchema,
+    updateTaskRequestSchema,
 } from './schemas.js';
+import type {
+    CreateTaskRequest,
+    UpdateTaskRequest,
+    TaskQueryRequest,
+    TaskFiltersRequest,
+} from './types.js';
 
 const tasksRouter = Router();
 
@@ -27,7 +33,9 @@ function parseOrBadRequest<T>(
     const parsedResult = schema.safeParse(payload);
     if (!parsedResult.success) {
         const issue = parsedResult.error.issues[0];
-        const message = issue?.message || fallbackMessage;
+        const fieldPath = issue?.path?.map((part) => String(part)).join('.');
+        const issueMessage = issue?.message || fallbackMessage;
+        const message = fieldPath ? `Invalid parameter "${fieldPath}": ${issueMessage}` : fallbackMessage;
         res.status(400).json({
             success: false,
             error: {
@@ -64,12 +72,12 @@ tasksRouter.get('/', async (req, res) => {
             return;
         }
 
-        const queryData = parseOrBadRequest(res, taskQuerySchema, req.query, 'Invalid query params.');
+        const queryData = parseOrBadRequest<TaskQueryRequest>(res, taskQueryRequestSchema, req.query, 'Invalid query params.');
         if (!queryData) {
             return;
         }
 
-        const filters = parseOrBadRequest(
+        const filters = parseOrBadRequest<TaskFiltersRequest>(
             res,
             taskFiltersSchema,
             {
@@ -108,7 +116,7 @@ tasksRouter.post('/', async (req, res) => {
             return;
         }
 
-        const bodyData = parseOrBadRequest(res, createTaskBodySchema, req.body, 'Invalid request body.');
+        const bodyData = parseOrBadRequest<CreateTaskRequest>(res, createTaskRequestSchema, req.body, 'Invalid request body.');
         if (!bodyData) {
             return;
         }
@@ -153,7 +161,7 @@ tasksRouter.put('/:id', async (req, res) => {
         }
         const taskId = paramsData.id;
 
-        const updatesData = parseOrBadRequest(res, updateTaskBodySchema, req.body, 'Invalid request body.');
+        const updatesData = parseOrBadRequest<UpdateTaskRequest>(res, updateTaskRequestSchema, req.body, 'Invalid request body.');
         if (!updatesData) {
             return;
         }

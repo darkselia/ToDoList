@@ -1,11 +1,20 @@
+import type { z } from 'zod';
 import type {
-    CreateTaskBodyInput,
-    SortOrderInput,
-    TaskFiltersInput,
-    TaskSortFieldInput,
-    TaskStatusFilterInput,
-    UpdateTaskBodyInput,
+    createTaskRequestSchema,
+    updateTaskRequestSchema,
+    taskQueryRequestSchema,
+    taskFiltersSchema,
+    taskSortFieldSchema,
+    sortOrderSchema,
 } from './schemas.js';
+
+type CreateTaskRequest = z.infer<typeof createTaskRequestSchema>;
+type UpdateTaskRequest = z.infer<typeof updateTaskRequestSchema>;
+type TaskQueryRequest = z.infer<typeof taskQueryRequestSchema>;
+type TaskFiltersRequest = z.infer<typeof taskFiltersSchema>;
+
+type TaskSortField = z.infer<typeof taskSortFieldSchema>;
+type SortOrder = z.infer<typeof sortOrderSchema>;
 
 type TaskDbRow = {
     id: number;
@@ -17,7 +26,7 @@ type TaskDbRow = {
     created_at: string;
 };
 
-type Task = {
+type TaskResponse = {
     id: number;
     title: string;
     description: string;
@@ -27,14 +36,9 @@ type Task = {
     createdAt: string;
 };
 
-type UpdateTaskInput = UpdateTaskBodyInput;
-type TaskSortField = TaskSortFieldInput;
-type SortOrder = SortOrderInput;
-type TaskStatusFilter = TaskStatusFilterInput;
-type TaskFilters = TaskFiltersInput;
-type CreateTaskInput = CreateTaskBodyInput & { createdBy: number };
+type CreateTaskInput = CreateTaskRequest & { createdBy: number };
 
-function mapTaskDbRowToTask(row: TaskDbRow): Task {
+function mapTaskDbRowToTask(row: TaskDbRow): TaskResponse {
     return {
         id: row.id,
         title: row.title,
@@ -47,14 +51,17 @@ function mapTaskDbRowToTask(row: TaskDbRow): Task {
 }
 
 export { mapTaskDbRowToTask };
+
 export type {
-    Task,
-    TaskDbRow,
-    CreateTaskInput,
-    UpdateTaskInput,
+    CreateTaskRequest,
+    UpdateTaskRequest,
+    TaskQueryRequest,
+    TaskFiltersRequest,
     TaskSortField,
     SortOrder,
-    TaskStatusFilter,
-    TaskFilters,
+    TaskDbRow,
+    TaskResponse,
+    CreateTaskInput,
 };
+
 

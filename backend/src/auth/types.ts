@@ -1,3 +1,8 @@
+import type { z } from 'zod';
+import type { loginRequestSchema } from './schemas.js';
+
+type LoginRequest = z.infer<typeof loginRequestSchema>;
+
 type UserDbRow = {
     id: number;
     email: string;
@@ -5,7 +10,7 @@ type UserDbRow = {
     created_at: string;
 };
 
-type User = {
+type UserResponse = {
     id: number;
     email: string;
     createdAt: string;
@@ -21,7 +26,7 @@ type AuthTokenPayload = {
     email: string;
 };
 
-function mapUserDbRowToUser(row: UserDbRow): User {
+function mapUserDbRowToUser(row: UserDbRow): UserResponse {
     return {
         id: row.id,
         email: row.email,
@@ -30,5 +35,6 @@ function mapUserDbRowToUser(row: UserDbRow): User {
 }
 
 export { mapUserDbRowToUser };
-export type { UserDbRow, User, CreateUserInput, AuthTokenPayload };
+
+export type { LoginRequest, UserDbRow, UserResponse, CreateUserInput, AuthTokenPayload };
 

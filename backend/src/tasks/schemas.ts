@@ -1,4 +1,4 @@
-import {z} from 'zod';
+import { z } from 'zod';
 
 const taskSortFieldSchema = z.enum(['createdAt', 'dueDate', 'status']);
 const sortOrderSchema = z.enum(['asc', 'desc']);
@@ -8,23 +8,20 @@ const dateBaseSchema = z.coerce.date().refine((value) => !Number.isNaN(value.get
     message: 'Invalid date.',
 });
 
-const dateYmdSchema = dateBaseSchema
-    .min(new Date(Date.now()), { message: 'Date must be in the future.' })
-;
+const dateYmdSchema = dateBaseSchema.min(new Date(Date.now()), { message: 'Date must be in the future.' });
 
-const taskBodyBaseSchema = z.object({
+const taskRequestBaseSchema = z.object({
     title: z.string().trim().min(1),
     description: z.string().trim(),
     dueDate: dateYmdSchema,
     isCompleted: z.boolean().optional(),
 });
 
-const createTaskBodySchema = taskBodyBaseSchema.extend({
-    description: taskBodyBaseSchema.shape.description.default(''),
-
+const createTaskRequestSchema = taskRequestBaseSchema.extend({
+    description: taskRequestBaseSchema.shape.description.default(''),
 });
 
-const updateTaskBodySchema = taskBodyBaseSchema
+const updateTaskRequestSchema = taskRequestBaseSchema
     .partial()
     .refine((value) => Object.keys(value).length > 0, {
         message: 'No fields provided for update.',
@@ -43,12 +40,12 @@ const singleQueryDateSchema = z.preprocess(
     dateBaseSchema,
 );
 
-const taskDateRangeBaseSchema = z.object({
+const taskDateRangeSchema = z.object({
     dueDateFrom: dateBaseSchema.optional(),
     dueDateTo: dateBaseSchema.optional(),
 });
 
-const taskQuerySchema = taskDateRangeBaseSchema.extend({
+const taskQueryRequestSchema = taskDateRangeSchema.extend({
     status: singleQueryValueSchema.pipe(taskStatusFilterSchema).optional(),
     search: singleQueryValueSchema.optional(),
     dueDateFrom: singleQueryDateSchema.optional(),
@@ -57,7 +54,7 @@ const taskQuerySchema = taskDateRangeBaseSchema.extend({
     order: singleQueryValueSchema.pipe(sortOrderSchema).optional(),
 });
 
-const taskFiltersSchema = taskDateRangeBaseSchema.extend({
+const taskFiltersSchema = taskDateRangeSchema.extend({
     userId: z.number().int().positive(),
     status: taskStatusFilterSchema.optional(),
     search: z.string().optional(),
@@ -69,19 +66,10 @@ export {
     taskSortFieldSchema,
     sortOrderSchema,
     taskStatusFilterSchema,
-    createTaskBodySchema,
-    updateTaskBodySchema,
+    createTaskRequestSchema,
+    updateTaskRequestSchema,
     taskIdParamsSchema,
-    taskQuerySchema,
+    taskQueryRequestSchema,
     taskFiltersSchema,
 };
-
-export type CreateTaskBodyInput = z.infer<typeof createTaskBodySchema>;
-export type UpdateTaskBodyInput = z.infer<typeof updateTaskBodySchema>;
-export type TaskSortFieldInput = z.infer<typeof taskSortFieldSchema>;
-export type SortOrderInput = z.infer<typeof sortOrderSchema>;
-export type TaskStatusFilterInput = z.infer<typeof taskStatusFilterSchema>;
-export type TaskFiltersInput = z.infer<typeof taskFiltersSchema>;
-export type TaskQueryInput = z.infer<typeof taskQuerySchema>;
-
 

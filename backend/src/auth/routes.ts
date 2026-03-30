@@ -1,7 +1,9 @@
 import { Router, type Response } from 'express';
 import type { ZodType } from 'zod';
 import bcrypt from 'bcrypt';
-import { loginBodySchema } from './schemas.js';
+import { loginRequestSchema } from './schemas.js';
+import { mapUserDbRowToUser } from './types.js';
+import type { LoginRequest } from './types.js';
 import { createUser, getUserWithPasswordByEmail } from './repository.js';
 import { signAccessToken } from './jwt.js';
 
@@ -35,7 +37,7 @@ function parseOrBadRequest<T>(
 }
 
 authRouter.post('/login', async (req, res) => {
-    const bodyData = parseOrBadRequest(res, loginBodySchema, req.body, 'Invalid request body.');
+    const bodyData = parseOrBadRequest<LoginRequest>(res, loginRequestSchema, req.body, 'Invalid request body.');
     if (!bodyData) {
         return;
     }
@@ -73,16 +75,13 @@ authRouter.post('/login', async (req, res) => {
     }
 
     const token = signAccessToken({ userId: existingUser.id, email: existingUser.email });
+    const userResponse = mapUserDbRowToUser(existingUser);
 
     res.status(200).json({
         success: true,
         data: {
             token,
-            user: {
-                id: existingUser.id,
-                email: existingUser.email,
-                createdAt: existingUser.created_at,
-            },
+            user: userResponse,
         },
         error: null,
     });

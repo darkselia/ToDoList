@@ -1,8 +1,8 @@
 import { get, getDatabase, run } from '../db/sqlite.js';
 import { mapUserDbRowToUser } from './types.js';
-import type { CreateUserInput, User, UserDbRow } from './types.js';
+import type { CreateUserInput, UserResponse, UserDbRow } from './types.js';
 
-async function getUserByEmail(email: string): Promise<User | null> {
+async function getUserByEmail(email: string): Promise<UserResponse | null> {
     const db = getDatabase();
     const row = await get<UserDbRow>(
         db,
@@ -32,7 +32,7 @@ async function getUserWithPasswordByEmail(email: string): Promise<UserDbRow | nu
     return row ?? null;
 }
 
-async function createUser(input: CreateUserInput): Promise<User> {
+async function createUser(input: CreateUserInput): Promise<UserResponse> {
     const db = getDatabase();
     const result = await run(
         db,

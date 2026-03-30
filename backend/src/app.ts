@@ -3,11 +3,14 @@ import cors from 'cors';
 import { tasksRouter } from './tasks/routes.js';
 import { authRouter } from './auth/routes.js';
 import { authenticateRequest } from './middleware/auth.js';
+import { createCorsOptions } from './config/cors.js';
 
 function createApp() {
     const app = express();
+    const corsOptions = createCorsOptions();
 
-    app.use(cors());
+    app.use(cors(corsOptions));
+    app.options(/.*/, cors(corsOptions));
     app.use(express.json());
 
 

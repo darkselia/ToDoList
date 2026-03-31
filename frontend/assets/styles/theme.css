@@ -1,0 +1,50 @@
+:root {
+  --color-bg: #f5f7fb;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f0f3f9;
+  --color-text: #182133;
+  --color-text-muted: #5f6b84;
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-danger: #dc2626;
+  --color-success: #166534;
+  --color-info: #0c4a6e;
+  --color-border: #d8deea;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.app-root {
+  min-height: 100vh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+.page-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-error {
+  color: var(--color-danger);
+  font-size: 14px;
+}
+
+.helper-text {
+  color: var(--color-text-muted);
+  font-size: 14px;
+}

@@ -19,7 +19,6 @@
 }
 
 .app-root {
-  min-height: 100vh;
   background: var(--color-bg);
   color: var(--color-text);
   font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
@@ -30,21 +29,4 @@
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-
-.form-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.form-error {
-  color: var(--color-danger);
-  font-size: 14px;
-}
-
-.helper-text {
-  color: var(--color-text-muted);
-  font-size: 14px;
 }

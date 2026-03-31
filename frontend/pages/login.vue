@@ -4,11 +4,12 @@ import BaseTextField from '~/components/ui/BaseTextField.vue';
 import BaseCard from '~/components/ui/BaseCard.vue';
 import BaseToast from '~/components/ui/BaseToast.vue';
 import {useAuth} from '~/composables/useAuth';
+import type { ToastState } from '~/types/ui';
 
 const email = ref('');
 const password = ref('');
 const isLoading = ref(false);
-const requestError = ref('');
+const toast = ref<ToastState | null>(null);
 const fieldErrors = ref<{
   email: string;
   password: string;
@@ -58,8 +59,24 @@ function validateForm() {
   return !emailError && !passwordError;
 }
 
+function showErrorToast(message: string) {
+  const normalizedMessage = message.trim();
+  if (!normalizedMessage) {
+    return;
+  }
+
+  toast.value = {
+    type: 'error',
+    text: normalizedMessage
+  };
+}
+
+function closeToast() {
+  toast.value = null;
+}
+
 async function handleSubmit() {
-  requestError.value = '';
+  toast.value = null;
 
   if (!validateForm() || isLoading.value) {
     return;
@@ -70,8 +87,11 @@ async function handleSubmit() {
   try {
     await login(email.value.trim(), password.value);
     await navigateTo('/tasks');
-  } catch (error) {
-    requestError.value = error.message || 'Произошла ошибка при входе. Пожалуйста, попробуйте снова.';
+  } catch (error: unknown) {
+    const message = error instanceof Error && error.message
+      ? error.message
+      : 'Произошла ошибка при входе. Пожалуйста, попробуйте снова.';
+    showErrorToast(message);
   } finally {
     isLoading.value = false;
   }
@@ -80,10 +100,10 @@ async function handleSubmit() {
 
 <template>
   <BaseToast
-      v-if="requestError"
-      :text="requestError"
-      type="error"
-      @close="requestError = ''"
+      v-if="toast"
+      :type="toast.type"
+      :text="toast.text"
+      @close="closeToast"
   />
   <div class="page-shell">
     <BaseCard

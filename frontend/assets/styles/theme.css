@@ -34,4 +34,8 @@ html, body, #__nuxt {
   display: flex;
   align-items: center;
   justify-content: center;
+
+  @media (width <= 768px) {
+    height: auto;
+  }
 }

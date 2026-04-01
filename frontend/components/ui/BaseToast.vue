@@ -58,6 +58,12 @@ function closeToast() {
   padding: 12px 14px;
   box-shadow: var(--shadow-sm);
   background: var(--color-surface);
+
+  @media (width<= 768px) {
+    right: 8px;
+    bottom: 8px;
+    width: calc(100vw - 16px);
+  }
 }
 
 .base-toast--success {

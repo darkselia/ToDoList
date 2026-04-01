@@ -303,7 +303,7 @@ onMounted(async () => {
         full-width
         max-width="1000px"
     >
-      <div class="tasks-actions tasks-actions--top">
+      <div class="tasks-actions">
         <form class="tasks-actions__search" @submit.prevent="handleSearchSubmit">
           <BaseTextField
               :model-value="searchQuery"
@@ -445,6 +445,11 @@ onMounted(async () => {
   margin-top: 0;
   margin-bottom: 16px;
   gap: 8px;
+
+  @media (width <= 800px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 .tasks-actions__search {

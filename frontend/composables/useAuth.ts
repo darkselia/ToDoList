@@ -1,17 +1,13 @@
-type LoginResponse = {
-    success: boolean;
-    data?: {
-        token: string;
-        user: {
-            id: number;
-            email: string;
-            createdAt: string;
-        };
+import type { ApiResponse } from '~/types/api';
+import { extractApiErrorMessage } from '~/utils/apiError';
+
+type LoginData = {
+    token: string;
+    user: {
+        id: number;
+        email: string;
+        createdAt: string;
     };
-    error?: {
-        code: number;
-        message: string;
-    } | null;
 };
 
 const TOKEN_STORAGE_KEY = 'todo_access_token';
@@ -50,25 +46,27 @@ export function useAuth() {
 
     async function login(email: string, password: string) {
         const nuxtApp = useNuxtApp();
+        let response: ApiResponse<LoginData>;
 
         try {
-            const response = await nuxtApp.$api<LoginResponse>('/api/auth/login', {
+            response = await nuxtApp.$api<ApiResponse<LoginData>>('/api/auth/login', {
                 method: 'POST',
                 body: {
                     email,
                     password
                 }
             });
-
-            if (!response.success || !response.data?.token) {
-                throw new Error(response.error?.message || 'Login failed.');
-            }
-
-            setToken(response.data.token);
-            return response.data;
         } catch (error) {
-            throw new Error('Произошла ошибка при входе. Пожалуйста, попробуйте снова.');
+            const rawMessage = extractApiErrorMessage(error, '');
+            throw new Error(rawMessage || 'Не удалось выполнить вход.');
         }
+
+        if (!response.success || !response.data?.token) {
+            throw new Error(response.error?.message || 'Не удалось выполнить вход.');
+        }
+
+        setToken(response.data.token);
+        return response.data;
 
 
     }

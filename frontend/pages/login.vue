@@ -20,6 +20,18 @@ const fieldErrors = ref<{
 
 const {login} = useAuth();
 
+function toUserErrorMessage(rawMessage: string, fallbackMessage: string) {
+  if (!rawMessage.trim()) {
+    return fallbackMessage;
+  }
+
+  if (rawMessage.includes('Failed to fetch') || rawMessage.includes('<no response>')) {
+    return 'Сервер недоступен, попробуйте позже.';
+  }
+
+  return rawMessage;
+}
+
 function validateEmail(value: string) {
   const normalizedValue = value.trim();
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -88,9 +100,8 @@ async function handleSubmit() {
     await login(email.value.trim(), password.value);
     await navigateTo('/tasks');
   } catch (error: unknown) {
-    const message = error instanceof Error && error.message
-      ? error.message
-      : 'Произошла ошибка при входе. Пожалуйста, попробуйте снова.';
+    const rawMessage = error instanceof Error ? error.message : '';
+    const message = toUserErrorMessage(rawMessage, 'Не удалось выполнить вход. Попробуйте снова.');
     showErrorToast(message);
   } finally {
     isLoading.value = false;

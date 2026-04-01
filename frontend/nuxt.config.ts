@@ -8,4 +8,7 @@ export default defineNuxtConfig({
       apiBase: 'http://localhost:4000'
     }
   },
+  experimental: {
+    appManifest: false
+  },
 })

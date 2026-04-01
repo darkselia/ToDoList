@@ -1,28 +1,38 @@
 <script setup lang="ts">
-withDefaults(
-  defineProps<{
-    title: string;
-    subtitle?: string;
-  }>(),
-  {
-    subtitle: ''
-  }
+const props = withDefaults(
+    defineProps<{
+      title?: string;
+      subtitle?: string;
+      maxWidth?: string;
+      minWidth?: string;
+      fullWidth?: boolean;
+    }>(),
+    {
+      subtitle: '',
+      maxWidth: '',
+      minWidth: '',
+      fullWidth: false,
+    }
 );
+
+const cardStyle = computed(() => ({
+  width: props.fullWidth ? '100%' : 'auto',
+  maxWidth: props.maxWidth || undefined,
+  minWidth: props.minWidth || undefined
+}));
 </script>
 
 <template>
-  <section class="card">
-    <h1 class="card-title">{{ title }}</h1>
+  <section class="card" :style="cardStyle">
+    <h1 v-if="title" class="card-title">{{ title }}</h1>
     <p v-if="subtitle" class="card-subtitle">{{ subtitle }}</p>
-    <slot />
+    <slot/>
   </section>
 </template>
 
 <style scoped>
 
 .card {
-  width: 100%;
-  max-width: 420px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);

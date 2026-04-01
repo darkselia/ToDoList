@@ -18,6 +18,11 @@
   --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
 }
 
+html, body, #__nuxt {
+  margin: 0;
+  height: 100%;
+}
+
 .app-root {
   background: var(--color-bg);
   color: var(--color-text);
@@ -25,7 +30,7 @@
 }
 
 .page-shell {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;

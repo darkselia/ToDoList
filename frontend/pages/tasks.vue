@@ -2,6 +2,7 @@
 import BaseButton from '~/components/ui/BaseButton.vue';
 import BaseCard from '~/components/ui/BaseCard.vue';
 import BaseModalShell from '~/components/ui/BaseModalShell.vue';
+import BaseTextField from '~/components/ui/BaseTextField.vue';
 import TaskForm from '~/components/tasks/TaskForm.vue';
 import BaseToast from '~/components/ui/BaseToast.vue';
 import {useAuth} from '~/composables/useAuth';
@@ -21,6 +22,8 @@ type TaskModalMode = 'create' | 'edit';
 
 const sortField = ref<TaskTableSortField>('status');
 const sortOrder = ref<TaskSortOrder>('asc');
+const searchQuery = ref('');
+const isSearchLoading = ref(false);
 
 const tasks = ref<TaskItem[]>([]);
 const toast = ref<ToastState | null>(null);
@@ -62,6 +65,28 @@ function showToast(type: ToastType, text: string) {
 
 function closeToast() {
   toast.value = null;
+}
+
+function handleSearchInput(value: string) {
+  searchQuery.value = value;
+}
+
+async function handleSearchSubmit() {
+  if (isLoading.value || isSearchLoading.value) {
+    return;
+  }
+
+  paginationMeta.value = {
+    ...paginationMeta.value,
+    page: 1,
+  };
+
+  isSearchLoading.value = true;
+  try {
+    await fetchTasks();
+  } finally {
+    isSearchLoading.value = false;
+  }
 }
 
 function toUserErrorMessage(rawMessage: string, fallbackMessage: string) {
@@ -203,7 +228,7 @@ function getSortArrow(column: TaskTableSortField) {
 
 async function fetchTasks(successMessage = '', pageOverride?: number) {
   const page = pageOverride ?? paginationMeta.value.page;
-  const result = await fetchTasksRequest(apiSortBy.value, sortOrder.value, page, pageSize.value, 'all');
+  const result = await fetchTasksRequest(apiSortBy.value, sortOrder.value, page, pageSize.value, 'all', searchQuery.value);
   if (!result.success || !result.data) {
     tasks.value = [];
     const requestError = toUserErrorMessage(result.errorMessage, 'Не удалось получить список задач.');
@@ -279,12 +304,35 @@ onMounted(async () => {
         max-width="1000px"
     >
       <div class="tasks-actions tasks-actions--top">
-        <BaseButton :disabled="isLoading" @click="openCreateTaskModal">
-          Создать задачу
-        </BaseButton>
+        <form class="tasks-actions__search" @submit.prevent="handleSearchSubmit">
+          <BaseTextField
+              :model-value="searchQuery"
+              name="task-search"
+              placeholder="Поиск по названию и описанию"
+              :disabled="isLoading || isSearchLoading"
+              @update:model-value="handleSearchInput"
+          />
+
+          <BaseButton
+              class="tasks-search-button"
+              type="submit"
+              variant="secondary"
+              :disabled="isLoading || isSearchLoading"
+              :loading="isSearchLoading"
+              aria-label="Искать"
+          >
+            <span v-if="!isSearchLoading" class="tasks-search-button__icon" aria-hidden="true">⌕</span>
+          </BaseButton>
+        </form>
+
+        <div class="tasks-actions__buttons">
+          <BaseButton :disabled="isLoading" @click="openCreateTaskModal">
+            Создать задачу
+          </BaseButton>
           <BaseButton variant="secondary" :disabled="isLoading" @click="handleLogout">
             Выйти
           </BaseButton>
+        </div>
       </div>
 
       <div class="tasks-table-wrap">
@@ -392,10 +440,40 @@ onMounted(async () => {
 <style scoped>
 .tasks-actions {
   display: flex;
-  justify-content: flex-end;
+  align-items: flex-end;
+  justify-content: space-between;
   margin-top: 0;
   margin-bottom: 16px;
   gap: 8px;
+}
+
+.tasks-actions__search {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  margin-right: 10px;
+}
+
+.tasks-actions__search :deep(.base-text-field) {
+  flex: 1;
+  min-width: 0;
+}
+
+.tasks-actions__buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tasks-search-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.tasks-search-button__icon {
+  font-size: 18px;
+  line-height: 1;
 }
 
 .tasks-pagination {
@@ -417,6 +495,7 @@ onMounted(async () => {
 
 .tasks-table {
   width: 100%;
+  height: 300px;
   border-collapse: collapse;
 }
 
@@ -436,6 +515,7 @@ onMounted(async () => {
   padding: 12px;
   font-size: 14px;
   text-align: left;
+  width: fit-content;
 }
 
 .tasks-table__cell--head {

@@ -4,7 +4,7 @@
 const props = withDefaults(
   defineProps<{
     modelValue: string;
-    label: string;
+    label?: string;
     type?: string;
     name?: string;
     placeholder?: string;

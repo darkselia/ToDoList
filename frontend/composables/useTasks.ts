@@ -58,9 +58,11 @@ export function useTasks() {
     order: TaskSortOrder,
     page: number,
     limit: number,
-    status = 'all'
+    status = 'all',
+    search = ''
   ) {
     isLoading.value = true;
+    const normalizedSearch = search.trim();
 
     const result = await executeRequest<TaskItem[], TaskPaginationMeta>(
       () => nuxtApp.$api<ApiResponse<TaskItem[], TaskPaginationMeta>>('/api/tasks', {
@@ -71,6 +73,7 @@ export function useTasks() {
           page,
           limit,
           status,
+          search: normalizedSearch || undefined,
         },
       }),
       'Не удалось получить список задач.'

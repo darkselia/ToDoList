@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const taskSortFieldSchema = z.enum(['createdAt', 'dueDate', 'status']);
+const taskSortFieldSchema = z.enum(['createdAt', 'dueDate', 'status', 'title']);
 const sortOrderSchema = z.enum(['asc', 'desc']);
 const taskStatusFilterSchema = z.enum(['all', 'active', 'completed', 'overdue']);
 
@@ -35,6 +35,11 @@ const singleQueryValueSchema = z
     .union([z.string(), z.array(z.string())])
     .transform((value) => (Array.isArray(value) ? value[0] : value));
 
+const singleQueryNumberSchema = z.preprocess(
+    (value) => (Array.isArray(value) ? value[0] : value),
+    z.coerce.number().int().positive(),
+);
+
 const singleQueryDateSchema = z.preprocess(
     (value) => (Array.isArray(value) ? value[0] : value),
     dateBaseSchema,
@@ -52,6 +57,8 @@ const taskQueryRequestSchema = taskDateRangeSchema.extend({
     dueDateTo: singleQueryDateSchema.optional(),
     sortBy: singleQueryValueSchema.pipe(taskSortFieldSchema).optional(),
     order: singleQueryValueSchema.pipe(sortOrderSchema).optional(),
+    page: singleQueryNumberSchema.optional(),
+    limit: singleQueryNumberSchema.pipe(z.number().max(100)).optional(),
 });
 
 const taskFiltersSchema = taskDateRangeSchema.extend({
@@ -60,6 +67,8 @@ const taskFiltersSchema = taskDateRangeSchema.extend({
     search: z.string().optional(),
     sortBy: taskSortFieldSchema.optional(),
     order: sortOrderSchema.optional(),
+    page: z.number().int().positive().default(1),
+    limit: z.number().int().positive().max(100).default(10),
 });
 
 export {

@@ -90,11 +90,12 @@ tasksRouter.get('/', async (req, res) => {
             return;
         }
 
-        const tasks = await getAllTasks(filters);
+        const tasksResult = await getAllTasks(filters);
 
         res.status(200).json({
             success: true,
-            data: tasks,
+            data: tasksResult.items,
+            meta: tasksResult.meta,
             error: null,
         });
     } catch (error) {

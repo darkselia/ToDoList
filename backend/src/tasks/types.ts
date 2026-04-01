@@ -36,6 +36,20 @@ type TaskResponse = {
     createdAt: string;
 };
 
+type TaskPaginationMeta = {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+};
+
+type TaskListResult = {
+    items: TaskResponse[];
+    meta: TaskPaginationMeta;
+};
+
 type CreateTaskInput = CreateTaskRequest & { createdBy: number };
 
 function mapTaskDbRowToTask(row: TaskDbRow): TaskResponse {
@@ -61,6 +75,8 @@ export type {
     SortOrder,
     TaskDbRow,
     TaskResponse,
+    TaskPaginationMeta,
+    TaskListResult,
     CreateTaskInput,
 };
 

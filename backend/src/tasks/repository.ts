@@ -4,6 +4,7 @@ import type {
     CreateTaskInput,
     TaskResponse,
     TaskDbRow,
+    TaskListResult,
     TaskFiltersRequest,
     TaskSortField,
     SortOrder,
@@ -12,13 +13,15 @@ import type {
 
 function resolveSortColumn(sortBy: TaskSortField = 'createdAt') {
     switch (sortBy) {
+        case 'title':
+            return 'title';
         case 'dueDate':
             return 'due_date';
-        case 'status':
-            return 'is_completed';
         case 'createdAt':
-        default:
             return 'created_at';
+        case 'status':
+        default:
+            return 'is_completed';
     }
 }
 
@@ -68,10 +71,13 @@ async function getTaskById(id: number): Promise<TaskResponse | null> {
     return row ? mapTaskDbRowToTask(row) : null;
 }
 
-async function getAllTasks(filters: TaskFiltersRequest): Promise<TaskResponse[]> {
+async function getAllTasks(filters: TaskFiltersRequest): Promise<TaskListResult> {
     const db = getDatabase();
     const sortColumn = resolveSortColumn(filters.sortBy);
     const sortOrder = resolveSortOrder(filters.order);
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+    const offset = (page - 1) * limit;
 
     const whereClauses: string[] = ['created_by = ?'];
     const params: unknown[] = [filters.userId];
@@ -105,6 +111,19 @@ async function getAllTasks(filters: TaskFiltersRequest): Promise<TaskResponse[]>
         params.push(searchPattern, searchPattern);
     }
 
+    const countRow = await get<{ total: number }>(
+        db,
+        `
+            SELECT COUNT(*) as total
+            FROM tasks
+            WHERE ${whereClauses.join(' AND ')}
+        `,
+        params,
+    );
+
+    const total = countRow?.total ?? 0;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+
     const rows = await all<TaskDbRow>(
         db,
         `
@@ -112,11 +131,22 @@ async function getAllTasks(filters: TaskFiltersRequest): Promise<TaskResponse[]>
             FROM tasks
             WHERE ${whereClauses.join(' AND ')}
             ORDER BY ${sortColumn} ${sortOrder}
+            LIMIT ? OFFSET ?
         `,
-        params,
+        [...params, limit, offset],
     );
 
-    return rows.map(mapTaskDbRowToTask);
+    return {
+        items: rows.map(mapTaskDbRowToTask),
+        meta: {
+            page,
+            limit,
+            total,
+            totalPages,
+            hasNext: page < totalPages,
+            hasPrev: page > 1,
+        },
+    };
 }
 
 async function updateTask(id: number, input: UpdateTaskRequest): Promise<TaskResponse | null> {

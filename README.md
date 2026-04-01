@@ -1,7 +1,30 @@
 # ToDoList (Nuxt 3 + Node.js/Express)
 
-- `frontend` — интерфейс на Nuxt 3
-- `backend` — REST API на Node.js + Express + TypeScript
+Мини-приложение для управления задачами:
+- `frontend` — интерфейс на Nuxt 3 (Vue 3)
+- `backend` — REST API на Node.js + Express + TypeScript + SQLite
+
+## Что реализовано
+
+### Обязательная часть
+- Форма входа (`email/password`)
+- Хранение JWT в `localStorage`
+- Автоперехват `401` (очистка токена + редирект на `/login`)
+- Список задач с сортировкой
+- Добавление, редактирование и удаление задач
+- Базовая валидация форм
+- Индикаторы загрузки (кнопки, операции с задачами, поиск)
+- REST API: `GET/POST/PUT/DELETE /api/tasks`
+- `POST /api/auth/login` с JWT
+- SQLite-хранилище
+- Обработка ошибок `400/404/500`
+
+### Дополнительно
+- Пагинация задач (backend + frontend)
+- Поиск по задачам (по `title/description`)
+- Статусы задач: активна / выполнена / просрочена
+- Ограничение изменения/удаления: только владелец задачи
+- Seed-скрипт для тестовых данных
 
 ## Технологический стек
 
@@ -14,9 +37,9 @@
 - Express
 - TypeScript
 - SQLite
-- JWT
-- Zod
-- CORS, dotenv
+- JWT (`jsonwebtoken`)
+- Валидация через `zod`
+- `cors`, `dotenv`, `bcrypt`
 
 ## Структура проекта
 
@@ -29,12 +52,10 @@ ToDoList/
 
 ## Требования
 
-- Node.js 20+ (рекомендуется LTS)
+- Node.js 20+
 - npm 10+
 
 ## Установка зависимостей
-
-Установите зависимости отдельно в каждом пакете:
 
 ```powershell
 cd "C:\Users\Дарья\Desktop\Проекты\тестовые задания\ToDoList\frontend"
@@ -44,14 +65,14 @@ cd "C:\Users\Дарья\Desktop\Проекты\тестовые задания\T
 npm install
 ```
 
-## Настройка переменных окружения (.env)
+## Настройка переменных окружения
 
 Создайте файл `backend/.env` (можно на основе `backend/.env.example`):
 
 ```env
 PORT=4000
 JWT_SECRET=your_super_secret_key
-DB_PATH=./data/todos.sqlite
+DB_PATH=./data/database.sqlite
 CORS_ORIGIN=http://localhost:3000
 ```
 
@@ -70,7 +91,7 @@ cd "C:\Users\Дарья\Desktop\Проекты\тестовые задания\T
 npm run dev
 ```
 
-Backend будет доступен на `http://localhost:4000`.
+API будет доступно на `http://localhost:4000`.
 
 ### 2) Запуск frontend
 
@@ -79,7 +100,19 @@ cd "C:\Users\Дарья\Desktop\Проекты\тестовые задания\T
 npm run dev
 ```
 
-Frontend по умолчанию стартует на `http://localhost:3000`.
+Приложение будет доступно на `http://localhost:3000`.
+
+## Seed тестовых данных
+
+Для быстрого наполнения БД добавлен скрипт `backend/src/scripts/seed.ts`.
+
+```powershell
+node --loader ts-node/esm ./src/scripts/seed.ts
+```
+
+Скрипт создает 2 пользователей и по несколько задач у каждого:
+- `demo@example.com` / `secret123`
+- `demo2@example.com` / `secret123`
 
 ## Формат API-ответов
 
@@ -120,57 +153,37 @@ JWT выдается через `POST /api/auth/login`.
 ### Auth
 
 - `POST /api/auth/login`
-  - назначение: вход пользователя; если пользователя нет, он создается
-  - body:
+  - Назначение: вход пользователя (если пользователя нет, создается новый)
+  - Body:
     ```json
     {
       "email": "user@example.com",
       "password": "secret123"
     }
     ```
-  - response `200/201`: JWT + пользователь
-    ```json
-    {
-      "success": true,
-      "data": {
-        "token": "...",
-        "user": {
-          "id": 1,
-          "email": "user@example.com",
-          "createdAt": "2026-03-30 10:00:00"
-        }
-      },
-      "error": null
-    }
-    ```
+  - Response: JWT + пользователь (`200/201`)
 
 - `POST /api/auth/logout`
-  - назначение: выход (клиент удаляет токен из `localStorage`)
-  - response:
-    ```json
-    {
-      "success": true,
-      "data": { "loggedOut": true },
-      "error": null
-    }
-    ```
+  - Назначение: выход (клиент удаляет токен)
 
-### Tasks (защищенные, нужен `x-access-token`)
+### Tasks (требуется `x-access-token`)
 
 - `GET /api/tasks`
-  - назначение: список задач текущего пользователя
-  - query (все опционально):
+  - Назначение: список задач текущего пользователя
+  - Query (все опционально):
     - `status`: `all | active | completed | overdue`
-    - `search`: строка поиска по `title/description`
-    - `dueDateFrom`: дата (например `2026-04-01`)
-    - `dueDateTo`: дата (например `2026-04-30`)
-    - `sortBy`: `createdAt | dueDate | status`
+    - `search`: поиск по `title/description`
+    - `dueDateFrom`: дата начала диапазона
+    - `dueDateTo`: дата конца диапазона
+    - `sortBy`: `createdAt | dueDate | status | title`
     - `order`: `asc | desc`
-  - response: массив задач текущего пользователя
+    - `page`: номер страницы
+    - `limit`: размер страницы (до `100`)
+  - Response: массив задач + `meta` пагинации
 
 - `POST /api/tasks`
-  - назначение: создать задачу текущего пользователя
-  - body:
+  - Назначение: создать задачу текущего пользователя
+  - Body:
     ```json
     {
       "title": "Подготовить отчет",
@@ -181,32 +194,26 @@ JWT выдается через `POST /api/auth/login`.
     ```
 
 - `PUT /api/tasks/{id}`
-  - назначение: обновить задачу по `id` (только свою)
-  - body (частично):
-    ```json
-    {
-      "title": "Новое название",
-      "description": "Обновленное описание",
-      "dueDate": "2026-04-20",
-      "isCompleted": true
-    }
-    ```
+  - Назначение: обновить задачу по `id` (только свою)
+  - Body: частичное обновление (`title`, `description`, `dueDate`, `isCompleted`)
 
 - `DELETE /api/tasks/{id}`
-  - назначение: удалить задачу по `id` (только свою)
-  - response:
-    ```json
-    {
-      "success": true,
-      "data": {
-        "deleted": true,
-        "id": 1
-      },
-      "error": null
-    }
-    ```
+  - Назначение: удалить задачу по `id` (только свою)
 
 ## Быстрая проверка API
 
-Готовые HTTP-сценарии находятся в `backend/test.http`.
+Готовые HTTP-сценарии: `backend/test.http`.
 
+## Скриншоты
+
+### Экран входа
+![Вход](images/img.png)
+
+### Экран списка задач
+![Список задач](images/img_2.png)
+
+### Модальное окно редактирования задачи
+![Изменение задачи](images/img_1.png)
+
+### Модальное окно создания задачи
+![Создание задачи](images/img_3.png)

@@ -3,9 +3,10 @@ export type ApiError = {
   message: string;
 };
 
-export type ApiResponse<T> = {
+export type ApiResponse<T, M = undefined> = {
   success: boolean;
   data?: T;
+  meta?: M;
   error?: ApiError | null;
 };
 

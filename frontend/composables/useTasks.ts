@@ -12,6 +12,7 @@ import type {
 export type TaskOperationResult<T, M = undefined> = {
   success: boolean;
   data: T | null;
+  meta: M | null;
   errorMessage: string;
 };
 
@@ -30,6 +31,7 @@ export function useTasks() {
         return {
           success: false,
           data: null,
+          meta: null,
           errorMessage: response.error?.message || fallbackMessage,
         };
       }
@@ -37,6 +39,7 @@ export function useTasks() {
       return {
         success: true,
         data: response.data,
+        meta: (response.meta ?? null) as M | null,
         errorMessage: '',
       };
     } catch (error) {
@@ -44,6 +47,7 @@ export function useTasks() {
       return {
         success: false,
         data: null,
+        meta: null,
         errorMessage: rawMessage || fallbackMessage,
       };
     }

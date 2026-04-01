@@ -1,75 +1,59 @@
 <script setup lang="ts">
 import BaseButton from '~/components/ui/BaseButton.vue';
 import BaseCard from '~/components/ui/BaseCard.vue';
+import BaseModalShell from '~/components/ui/BaseModalShell.vue';
+import TaskForm from '~/components/tasks/TaskForm.vue';
 import BaseToast from '~/components/ui/BaseToast.vue';
 import {useAuth} from '~/composables/useAuth';
+import {useTasks} from '~/composables/useTasks';
 import type {
-  ApiErrorLike,
+  TaskCreatePayload,
   TaskItem,
+  TaskPaginationMeta,
   TaskSortBy,
   TaskSortOrder,
   TaskTableSortField,
-  TasksResponse,
-  TaskResponse
+  TaskUpdatePayload
 } from '~/types/tasks';
 import type {ToastState, ToastType} from '~/types/ui';
 
-const sortField = ref<TaskTableSortField>('dueDate');
-const sortOrder = ref<TaskSortOrder>('desc');
+type TaskModalMode = 'create' | 'edit';
 
-const isLoading = ref(false);
+const sortField = ref<TaskTableSortField>('status');
+const sortOrder = ref<TaskSortOrder>('asc');
+
 const tasks = ref<TaskItem[]>([]);
-const requestError = ref('');
 const toast = ref<ToastState | null>(null);
-const toastKey = ref(0);
+const selectedTask = ref<TaskItem | null>(null);
+const isTaskModalOpen = ref(false);
+const taskModalMode = ref<TaskModalMode>('edit');
+const pageSize = ref(5);
+const paginationMeta = ref<TaskPaginationMeta>({
+  page: 1,
+  limit: 5,
+  total: 0,
+  totalPages: 1,
+  hasNext: false,
+  hasPrev: false,
+});
 
 const {logout} = useAuth();
-const nuxtApp = useNuxtApp();
+const {
+  isLoading,
+  fetchTasks: fetchTasksRequest,
+  createTask: createTaskRequest,
+  updateTask: updateTaskRequest,
+  deleteTask: deleteTaskRequest,
+  toggleTaskCompletion: toggleTaskCompletionRequest,
+} = useTasks();
 
-const apiSortBy = computed<TaskSortBy>(() => {
-  if (sortField.value === 'status') {
-    return 'status';
-  }
-
-  return 'dueDate';
-});
-
-const sortedTasks = computed(() => {
-  const tasksCopy = [...tasks.value];
-
-  if (sortField.value === 'title') {
-    tasksCopy.sort((leftTask, rightTask) => {
-      const compareResult = leftTask.title.localeCompare(rightTask.title, 'ru');
-      return sortOrder.value === 'asc' ? compareResult : -compareResult;
-    });
-    return tasksCopy;
-  }
-
-  if (sortField.value === 'dueDate') {
-    tasksCopy.sort((leftTask, rightTask) => {
-      const leftTime = new Date(leftTask.dueDate).getTime();
-      const rightTime = new Date(rightTask.dueDate).getTime();
-      return sortOrder.value === 'asc' ? leftTime - rightTime : rightTime - leftTime;
-    });
-    return tasksCopy;
-  }
-
-  tasksCopy.sort((leftTask, rightTask) => {
-    const leftStatus = getStatusWeight(leftTask);
-    const rightStatus = getStatusWeight(rightTask);
-    return sortOrder.value === 'asc' ? leftStatus - rightStatus : rightStatus - leftStatus;
-  });
-
-  return tasksCopy;
-});
+const apiSortBy = computed<TaskSortBy>(() => sortField.value);
 
 function showToast(type: ToastType, text: string) {
   const normalizedText = text.trim();
   if (!normalizedText) {
     return;
   }
-
-  toastKey.value += 1;
   toast.value = {
     type,
     text: normalizedText
@@ -80,37 +64,16 @@ function closeToast() {
   toast.value = null;
 }
 
-function parseErrorMessage(error: unknown) {
-  const fallbackMessage = 'Не удалось получить список задач.';
-
-  if (!error || typeof error !== 'object') {
+function toUserErrorMessage(rawMessage: string, fallbackMessage: string) {
+  if (!rawMessage.trim()) {
     return fallbackMessage;
   }
 
-  const apiError = error as ApiErrorLike;
-  const serverMessage = apiError.response?._data?.error?.message;
-  if (typeof serverMessage === 'string' && serverMessage.trim()) {
-    return serverMessage.trim();
-  }
-
-  if (typeof apiError.message === 'string' && apiError.message.includes('Failed to fetch')) {
+  if (rawMessage.includes('Failed to fetch') || rawMessage.includes('<no response>')) {
     return 'Сервер недоступен, попробуйте позже.';
   }
 
-  return fallbackMessage;
-}
-
-function getStatusWeight(task: TaskItem) {
-  if (task.isCompleted) {
-    return 2;
-  }
-
-  const dueTime = new Date(task.dueDate).getTime();
-  if (dueTime < Date.now()) {
-    return 1;
-  }
-
-  return 0;
+  return rawMessage;
 }
 
 function getStatusLabel(task: TaskItem) {
@@ -125,28 +88,25 @@ function getStatusLabel(task: TaskItem) {
   return 'Активна';
 }
 
-function getStatusClass(task: TaskItem) {
-  const label = getStatusLabel(task);
-
-  if (label === 'Выполнена') {
-    return 'tasks-status--completed';
-  }
-
-  if (label === 'Просрочена') {
-    return 'tasks-status--overdue';
-  }
-
-  return 'tasks-status--active';
+function openTaskModal(task: TaskItem) {
+  taskModalMode.value = 'edit';
+  selectedTask.value = task;
+  isTaskModalOpen.value = true;
 }
 
-function updateTaskInList(updatedTask: TaskItem) {
-  tasks.value = tasks.value.map((task) => {
-    if (task.id !== updatedTask.id) {
-      return task;
-    }
+function openCreateTaskModal() {
+  taskModalMode.value = 'create';
+  selectedTask.value = null;
+  isTaskModalOpen.value = true;
+}
 
-    return updatedTask;
-  });
+function closeTaskModal(force = false) {
+  if (isLoading.value && !force) {
+    return;
+  }
+
+  isTaskModalOpen.value = false;
+  selectedTask.value = null;
 }
 
 async function toggleTaskCompletion(task: TaskItem) {
@@ -154,28 +114,66 @@ async function toggleTaskCompletion(task: TaskItem) {
     return;
   }
 
-  isLoading.value = true;
-
-  try {
-    const response = await nuxtApp.$api<TaskResponse>(`/api/tasks/${task.id}`, {
-      method: 'PUT',
-      body: {
-        isCompleted: !task.isCompleted
-      }
-    });
-
-    if (!response.success || !response.data) {
-      showToast('error', response.error?.message || 'Не удалось обновить статус задачи.');
-      return;
-    }
-
-    updateTaskInList(response.data);
-    showToast('success', 'Статус задачи обновлен.');
-  } catch (error) {
-    showToast('error', parseErrorMessage(error));
-  } finally {
-    isLoading.value = false;
+  const result = await toggleTaskCompletionRequest(task);
+  if (!result.success || !result.data) {
+    showToast('error', toUserErrorMessage(result.errorMessage, 'Не удалось обновить статус задачи.'));
+    return;
   }
+
+  await fetchTasks();
+  showToast('success', 'Статус задачи обновлен.');
+}
+
+async function createTask(payload: TaskCreatePayload) {
+  if (isLoading.value) {
+    return;
+  }
+
+  const result = await createTaskRequest(payload);
+  if (!result.success || !result.data) {
+    showToast('error', toUserErrorMessage(result.errorMessage, 'Не удалось создать задачу.'));
+    return;
+  }
+
+  paginationMeta.value = {
+    ...paginationMeta.value,
+    page: 1,
+  };
+  await fetchTasks();
+  showToast('success', 'Задача создана.');
+  closeTaskModal(true);
+}
+
+async function updateTask(payload: TaskUpdatePayload) {
+  if (isLoading.value || !selectedTask.value) {
+    return;
+  }
+
+  const result = await updateTaskRequest(selectedTask.value.id, payload);
+  if (!result.success || !result.data) {
+    showToast('error', toUserErrorMessage(result.errorMessage, 'Не удалось обновить задачу.'));
+    return;
+  }
+
+  await fetchTasks();
+  showToast('success', 'Задача обновлена.');
+  closeTaskModal(true);
+}
+
+async function deleteSelectedTask() {
+  if (isLoading.value || !selectedTask.value) {
+    return;
+  }
+
+  const result = await deleteTaskRequest(selectedTask.value.id);
+  if (!result.success) {
+    showToast('error', toUserErrorMessage(result.errorMessage, 'Не удалось удалить задачу.'));
+    return;
+  }
+
+  await fetchTasks();
+  showToast('success', 'Задача удалена.');
+  closeTaskModal(true);
 }
 
 function formatDate(value: string) {
@@ -199,55 +197,56 @@ function getSortArrow(column: TaskTableSortField) {
   return sortOrder.value === 'asc' ? '↑' : '↓';
 }
 
-function toggleOrder(nextField: TaskTableSortField) {
-  if (sortField.value === nextField) {
-    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+async function fetchTasks(successMessage = '', pageOverride?: number) {
+  const page = pageOverride ?? paginationMeta.value.page;
+  const result = await fetchTasksRequest(apiSortBy.value, sortOrder.value, page, pageSize.value, 'all');
+  if (!result.success || !result.data) {
+    tasks.value = [];
+    const requestError = toUserErrorMessage(result.errorMessage, 'Не удалось получить список задач.');
+    showToast('error', requestError);
     return;
   }
 
-  sortField.value = nextField;
-  sortOrder.value = 'asc';
-}
+  tasks.value = result.data;
+  if (result.meta) {
+    paginationMeta.value = result.meta;
+  }
 
-async function fetchTasks(successMessage: string) {
-  requestError.value = '';
-  isLoading.value = true;
-
-  try {
-    const response = await nuxtApp.$api<TasksResponse>('/api/tasks', {
-      method: 'GET',
-      query: {
-        sortBy: apiSortBy.value,
-        order: sortOrder.value,
-        status: 'all'
-      }
-    });
-
-    if (!response.success) {
-      tasks.value = [];
-      requestError.value = response.error?.message || 'Не удалось получить список задач.';
-      showToast('error', requestError.value);
-      return;
-    }
-
-    tasks.value = Array.isArray(response.data) ? response.data : [];
+  if (successMessage.trim()) {
     showToast('success', successMessage);
-  } catch (error) {
-    tasks.value = [];
-    requestError.value = parseErrorMessage(error);
-    showToast('error', requestError.value);
-  } finally {
-    isLoading.value = false;
   }
 }
 
 async function sortByColumn(nextField: TaskTableSortField) {
-  toggleOrder(nextField);
+  if (sortField.value === nextField) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortField.value = nextField;
+    sortOrder.value = 'asc';
+  }
 
+  paginationMeta.value = {
+    ...paginationMeta.value,
+    page: 1,
+  };
+  await fetchTasks();
   showToast('info', 'Сортировка задач обновлена.');
-  return;
+}
 
+async function goToPrevPage() {
+  if (isLoading.value || !paginationMeta.value.hasPrev) {
+    return;
+  }
 
+  await fetchTasks('', paginationMeta.value.page - 1);
+}
+
+async function goToNextPage() {
+  if (isLoading.value || !paginationMeta.value.hasNext) {
+    return;
+  }
+
+  await fetchTasks('', paginationMeta.value.page + 1);
 }
 
 async function handleLogout() {
@@ -275,10 +274,13 @@ onMounted(async () => {
         full-width
         max-width="1000px"
     >
-      <div class="tasks-actions">
-        <BaseButton variant="secondary" :disabled="isLoading" @click="handleLogout">
-          Выйти
+      <div class="tasks-actions tasks-actions--top">
+        <BaseButton :disabled="isLoading" @click="openCreateTaskModal">
+          Создать задачу
         </BaseButton>
+          <BaseButton variant="secondary" :disabled="isLoading" @click="handleLogout">
+            Выйти
+          </BaseButton>
       </div>
 
       <div class="tasks-table-wrap">
@@ -312,42 +314,97 @@ onMounted(async () => {
           </thead>
 
           <tbody class="tasks-table__body">
-          <tr v-if="!isLoading && sortedTasks.length === 0" class="tasks-table__row">
+          <tr v-if="!isLoading && tasks.length === 0" class="tasks-table__row">
             <td class="tasks-table__cell tasks-table__cell--empty" colspan="3">
               Список задач пуст.
             </td>
           </tr>
 
-          <tr v-for="task in sortedTasks" :key="task.id" class="tasks-table__row">
+          <tr v-for="task in tasks" :key="task.id" class="tasks-table__row tasks-table__row--clickable"
+              @click="openTaskModal(task)">
             <td class="tasks-table__cell tasks-table__cell--title">
-              <label class="tasks-table__title-wrap">
+              <div class="tasks-table__title-wrap">
                 <input
                     class="tasks-table__checkbox"
                     type="checkbox"
                     :checked="task.isCompleted"
                     :disabled="isLoading"
+                    @click.stop
                     @change="toggleTaskCompletion(task)"
                 >
                 <span>{{ task.title }}</span>
-              </label>
+              </div>
             </td>
             <td class="tasks-table__cell tasks-table__cell--date">{{ formatDate(task.dueDate) }}</td>
             <td class="tasks-table__cell tasks-table__cell--status">
-              <span :class="['tasks-status', getStatusClass(task)]">{{ getStatusLabel(task) }}</span>
+              <span
+                  :class="[
+                    'tasks-status',
+                    {
+                      'tasks-status--active': getStatusLabel(task) === 'Активна',
+                      'tasks-status--completed': getStatusLabel(task) === 'Выполнена',
+                      'tasks-status--overdue': getStatusLabel(task) === 'Просрочена'
+                    }
+                  ]"
+              >
+                {{ getStatusLabel(task) }}
+              </span>
             </td>
           </tr>
           </tbody>
         </table>
       </div>
+
+      <div class="tasks-pagination">
+        <BaseButton variant="secondary" :disabled="isLoading || !paginationMeta.hasPrev" @click="goToPrevPage">
+          Назад
+        </BaseButton>
+        <span class="tasks-pagination__text">Страница {{ paginationMeta.page }} из {{ paginationMeta.totalPages }}</span>
+        <BaseButton variant="secondary" :disabled="isLoading || !paginationMeta.hasNext" @click="goToNextPage">
+          Вперед
+        </BaseButton>
+      </div>
+
+
     </BaseCard>
   </div>
+
+  <BaseModalShell
+      :is-open="isTaskModalOpen"
+      :loading="isLoading"
+      @close="closeTaskModal"
+  >
+    <TaskForm
+        :mode="taskModalMode"
+        :task="selectedTask"
+        :loading="isLoading"
+        @create="createTask"
+        @update="updateTask"
+        @delete="deleteSelectedTask"
+    />
+  </BaseModalShell>
 </template>
 
 <style scoped>
 .tasks-actions {
   display: flex;
   justify-content: flex-end;
+  margin-top: 0;
   margin-bottom: 16px;
+  gap: 8px;
+}
+
+.tasks-pagination {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.tasks-pagination__text {
+  color: var(--color-text-muted);
+  font-size: 14px;
 }
 
 .tasks-table-wrap {
@@ -361,6 +418,14 @@ onMounted(async () => {
 
 .tasks-table__row {
   border-bottom: 1px solid var(--color-border);
+}
+
+.tasks-table__row--clickable {
+  cursor: pointer;
+}
+
+.tasks-table__row--clickable:hover {
+  background: var(--color-surface-muted);
 }
 
 .tasks-table__cell {
@@ -443,6 +508,7 @@ onMounted(async () => {
 .tasks-status--overdue {
   background: var(--color-danger);
 }
+
 
 </style>
 

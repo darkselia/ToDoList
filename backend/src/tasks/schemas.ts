@@ -8,17 +8,18 @@ const dateBaseSchema = z.coerce.date().refine((value) => !Number.isNaN(value.get
     message: 'Invalid date.',
 });
 
-const dateYmdSchema = dateBaseSchema.min(new Date(Date.now()), { message: 'Date must be in the future.' });
+const createDueDateSchema = dateBaseSchema.min(new Date(Date.now()), { message: 'Date must be in the future.' });
 
 const taskRequestBaseSchema = z.object({
     title: z.string().trim().min(1),
     description: z.string().trim(),
-    dueDate: dateYmdSchema,
+    dueDate: dateBaseSchema,
     isCompleted: z.boolean().optional(),
 });
 
 const createTaskRequestSchema = taskRequestBaseSchema.extend({
     description: taskRequestBaseSchema.shape.description.default(''),
+    dueDate: createDueDateSchema,
 });
 
 const updateTaskRequestSchema = taskRequestBaseSchema

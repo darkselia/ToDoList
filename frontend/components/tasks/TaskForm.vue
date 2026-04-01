@@ -27,7 +27,7 @@ const emit = defineEmits<{
 const isDeleteConfirmOpen = ref(false);
 const isCalendarOpen = ref(false);
 const calendarWrapRef = ref<HTMLElement | null>(null);
-const formData = ref<TaskUpdatePayload>({
+const formData = ref<TaskCreatePayload>({
   title: '',
   description: '',
   dueDate: '',
@@ -147,7 +147,7 @@ function handleSubmit() {
     return;
   }
 
-  const payload: TaskUpdatePayload = {
+  const normalizedPayload: TaskCreatePayload = {
     title: formData.value.title.trim(),
     description: formData.value.description.trim(),
     dueDate: formData.value.dueDate,
@@ -155,11 +155,34 @@ function handleSubmit() {
   };
 
   if (isEditMode.value) {
-    emit('update', payload);
+    const updatePayload: TaskUpdatePayload = {};
+    const initialDueDate = props.task?.dueDate.slice(0, 10) ?? '';
+
+    if (props.task && normalizedPayload.title !== props.task.title) {
+      updatePayload.title = normalizedPayload.title;
+    }
+
+    if (props.task && normalizedPayload.description !== (props.task.description || '')) {
+      updatePayload.description = normalizedPayload.description;
+    }
+
+    if (normalizedPayload.dueDate !== initialDueDate) {
+      updatePayload.dueDate = normalizedPayload.dueDate;
+    }
+
+    if (props.task && normalizedPayload.isCompleted !== props.task.isCompleted) {
+      updatePayload.isCompleted = normalizedPayload.isCompleted;
+    }
+
+    if (Object.keys(updatePayload).length === 0) {
+      return;
+    }
+
+    emit('update', updatePayload);
     return;
   }
 
-  emit('create', payload);
+  emit('create', normalizedPayload);
 }
 
 function openDeleteConfirm() {

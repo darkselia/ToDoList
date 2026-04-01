@@ -69,6 +69,10 @@ function toUserErrorMessage(rawMessage: string, fallbackMessage: string) {
     return fallbackMessage;
   }
 
+  if (rawMessage.includes('Date must be in the future.')) {
+    return 'Дата дедлайна должна быть в будущем.';
+  }
+
   if (rawMessage.includes('Failed to fetch') || rawMessage.includes('<no response>')) {
     return 'Сервер недоступен, попробуйте позже.';
   }

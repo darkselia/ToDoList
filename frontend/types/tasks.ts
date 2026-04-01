@@ -9,10 +9,10 @@ export type TaskItem = {
 };
 
 export type TaskUpdatePayload = {
-    title: string;
-    description: string;
-    dueDate: string;
-    isCompleted: boolean;
+    title?: string;
+    description?: string;
+    dueDate?: string;
+    isCompleted?: boolean;
 };
 
 export type TaskCreatePayload = {
